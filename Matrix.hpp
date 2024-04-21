@@ -19,6 +19,11 @@ namespace algebra {
     enum StorageOrder { row, column };
 
     //Template class Matrix
+    /**
+     * @brief Template class Matrix to store matrix in compressed or uncompressed from
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     */
     template <class T, StorageOrder Store = StorageOrder::row>
     class Matrix {
     private:
@@ -46,10 +51,12 @@ namespace algebra {
         // Method to read matrix from Matrix Market format
         void read_matrix_market(const std::string& filename);
 
-        // To check is the marix is compressed or uncompressed
-        bool is_compressed() {
-            return compressed;
-        } ;
+
+        /**
+         * @brief method To check is the matrix is compressed or uncompressed
+         * @return true if compress form, false otherwise
+         */
+        bool is_compressed() { return compressed; } ;
 
         // search an element in compress matrix
         T find_compressed(std::size_t row, std::size_t col);

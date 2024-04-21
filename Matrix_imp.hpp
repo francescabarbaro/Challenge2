@@ -11,15 +11,22 @@
 // This is done in a header file since it's a template
 namespace algebra {
 
-    // Method to read matrix from Matrix Market format
+
+    /**
+     * @brief method to read the matrix from the Matrix Market
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     * @param filename string containing the name of the file to be read
+     */
     template<typename T, StorageOrder Store>
     void Matrix<T,Store>::read_matrix_market(const std::string& filename) {
-        //Clear previous matrix
+        //Clear previous matrix (if needed)
         values.clear();
         inner_index.clear();
         outer_index.clear();
         compressed_values.clear();
 
+        //open the file
         std::ifstream file(filename);
         if (!file.is_open()) {
             throw std::runtime_error("Failed to open file: " + filename);
@@ -27,29 +34,36 @@ namespace algebra {
 
         std::string line;
 
+        //avoid first row
         while (file.peek() == '%') {
             file.ignore(2048, '\n');
         }
-        // std::istringstream iss(line);
-        std::size_t num_rows, num_cols, num_elements;
 
-        file >> num_rows >> num_cols >> num_elements;
+        std::size_t num_rows, num_cols, non_zero_elem;
+
+        file >> num_rows >> num_cols >> non_zero_elem;
 
 
-        for (std::size_t i = 0; i < num_elements; ++i) {
+        for (std::size_t i = 0; i < non_zero_elem; ++i) {
             std::size_t row, col;
             T value;
             file >> row >> col >> value;
 
-
-            // we always use the format (row, col) -> value
-            // only the comparison operator is different
+            // the map is ordered by row index
             values[{row - 1, col - 1}] = value;
         }
         return;
     }
 
     // definition operator () non const version
+    /**
+     * @brief non const version of the operator(), if the matrix is uncompressed it can add a value
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     * @param i index of the row
+     * @param j index of the column
+     * @return the value of the matrix at the indexes in input
+     */
     template<typename T, StorageOrder Store>
     T  & Matrix<T, Store>:: operator()(std::size_t i, std::size_t j) {
         // Check if the indexes are present in the matrix
@@ -66,6 +80,14 @@ namespace algebra {
     } //non const verison operator ()
 
     //definition operato ()  const version
+    /**
+     * @brief const version of the operator()
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     * @param i index of the row
+     * @param j index of the column
+     * @return the value of the matrix at the indexes in input, if already exists, 0 otherwise
+     */
     template<typename T, StorageOrder Store>
     const T  & Matrix<T, Store>:: operator()(std::size_t i, std::size_t j) const {
         // Check if the indexes are present in the matrix
@@ -88,6 +110,11 @@ namespace algebra {
     }//const version operator ()
 
     // definition compress method
+    /**
+     * @brief method to compress an uncompressed matrix
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     */
     template<typename T, StorageOrder Store>
     void Matrix<T, Store>::compress() {
         if (compressed) {
@@ -171,6 +198,11 @@ namespace algebra {
     }//compress
 
     // definition uncompress method
+    /**
+     * @brief method to uncompress a compressed matrix
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     */
     template<typename T, StorageOrder Store>
     void Matrix<T, Store>::uncompress() {
         //check if the matrix is already in uncompressed form
@@ -210,6 +242,13 @@ namespace algebra {
 
 
     //definition resize method
+    /**
+     * @brief method to change the size of an existing matrix
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     * @param new_rows number of wanted rows
+     * @param new_cols number of wanted columns
+     */
     template<typename T, StorageOrder Store>
     void Matrix<T, Store>::resize(std::size_t new_rows, std::size_t new_cols) {
         // Update the number of rows and columns
@@ -218,7 +257,7 @@ namespace algebra {
 
         // Check if the matrix is compressed, if so, uncompress it
         if (compressed) {
-            // TODO: uncompress();
+            Matrix<T,Store>::uncompress();
         }
 
         // If the new size is smaller than the current size, remove elements outside the new size
@@ -232,6 +271,14 @@ namespace algebra {
         }
     } //Resize
 
+    /**
+     * @brief method to find, if exist, the element given the indexes of a compressed matrix
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     * @param row index for the row
+     * @param col index for the columns
+     * @return corresponding value at the input indexes
+     */
     template<typename T, StorageOrder Store>
     T Matrix<T, Store>::find_compressed(std::size_t row, std::size_t col) {
         if constexpr (Store == StorageOrder::row) { // Compressed Sparse Row
@@ -251,8 +298,16 @@ namespace algebra {
                   << ") does not exist." << std::endl;
     }//find_compressed
 
+    /**
+     * @brief method to print the  matrix
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     */
     template<typename T, StorageOrder Store>
     void Matrix<T,Store>::print() const {
+        if(compressed){
+            Matrix<T,Store>::uncompress();
+        }
 
         for (auto it=values.cbegin(); it!=values.cend(); ++it)
         {
