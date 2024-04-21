@@ -10,6 +10,7 @@
 #include <map>
 #include <vector>
 #include <array>
+#include <fstream>
 
 
 namespace algebra {
@@ -42,6 +43,9 @@ namespace algebra {
         Matrix(std::size_t nrows, std::size_t ncols) : nrows(nrows), ncols(ncols) {};
         Matrix() = default;
 
+        // Method to read matrix from Matrix Market format
+        void read_matrix_market(const std::string& filename);
+
         // To check is the marix is compressed or uncompressed
         bool is_compressed() {
             return compressed;
@@ -61,6 +65,8 @@ namespace algebra {
 
         //method to resize the matrix
         void resize(std::size_t new_rows, std::size_t new_cols);
+
+        void print() const ;
 
 
 

@@ -11,8 +11,45 @@
 // This is done in a header file since it's a template
 namespace algebra {
 
+    // Method to read matrix from Matrix Market format
+    template<typename T, StorageOrder Store>
+    void Matrix<T,Store>::read_matrix_market(const std::string& filename) {
+        //Clear previous matrix
+        values.clear();
+        inner_index.clear();
+        outer_index.clear();
+        compressed_values.clear();
 
-    // definition operator () non consr version
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            throw std::runtime_error("Failed to open file: " + filename);
+        }
+
+        std::string line;
+
+        while (file.peek() == '%') {
+            file.ignore(2048, '\n');
+        }
+        // std::istringstream iss(line);
+        std::size_t num_rows, num_cols, num_elements;
+
+        file >> num_rows >> num_cols >> num_elements;
+
+
+        for (std::size_t i = 0; i < num_elements; ++i) {
+            std::size_t row, col;
+            T value;
+            file >> row >> col >> value;
+
+
+            // we always use the format (row, col) -> value
+            // only the comparison operator is different
+            values[{row - 1, col - 1}] = value;
+        }
+        return;
+    }
+
+    // definition operator () non const version
     template<typename T, StorageOrder Store>
     T  & Matrix<T, Store>:: operator()(std::size_t i, std::size_t j) {
         // Check if the indexes are present in the matrix
@@ -34,7 +71,7 @@ namespace algebra {
         // Check if the indexes are present in the matrix
         if (i >= nrows || j >= ncols){
             std::cerr << "Indexes out of bounds" << std::endl;
-            return ;}
+            }
 
         if (!compressed) {
             auto key = std::array<std::size_t, 2>{i, j};
@@ -213,6 +250,15 @@ namespace algebra {
         std::cerr << "Error: Matrix is in compressed form and element at position (" << row << ", " << col
                   << ") does not exist." << std::endl;
     }//find_compressed
+
+    template<typename T, StorageOrder Store>
+    void Matrix<T,Store>::print() const {
+
+        for (auto it=values.cbegin(); it!=values.cend(); ++it)
+        {
+            std::cout << it->first[0] << " " << it->first[1] << ": " << it->second << std::endl;
+        }
+    }
 
     }//algebra
 

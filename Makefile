@@ -3,7 +3,7 @@ CXXFLAGS ?= -std=c++20
 CPPFLAGS ?= -O3 -Wall 
 
 
-SOURCES = main.cpp Matrix.cpp
+SOURCES = main.cpp
 OBJECTS = $(SOURCES: .cpp=.o)
 HEADERS = Matrix.hpp Matrix_imp.hpp
 EXEC = main
