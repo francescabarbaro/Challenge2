@@ -44,13 +44,33 @@ namespace algebra {
         file >> num_rows >> num_cols >> non_zero_elem;
 
 
-        for (std::size_t i = 0; i < non_zero_elem; ++i) {
-            std::size_t row, col;
-            T value;
-            file >> row >> col >> value;
+        // differentiate the ordering in the map for the case by row and by column
 
-            // the map is ordered by row index
-            values[{row - 1, col - 1}] = value;
+        // the key of the map "by row" is given by (row, col)
+        // the map now is correctly ordered by row
+        if constexpr (Store == StorageOrder::row) {
+            for (std::size_t i = 0; i < non_zero_elem; ++i) {
+                std::size_t row, col;
+                T value;
+                file >> row >> col >> value;
+
+                // the map is ordered by row index
+                values[{row - 1, col - 1}] = value;
+            }
+        }
+
+        // the key of the map "by column" is given by (col, row)
+        // the map now is correctly ordered by column
+        if constexpr (Store == StorageOrder::column){
+            for (std::size_t i = 0; i < non_zero_elem; ++i) {
+                std::size_t row, col;
+                T value;
+                file >> row >> col >> value;
+
+                // the map is ordered by col index
+                values[{col - 1, row - 1}] = value;
+            }
+
         }
         return;
     }
@@ -123,79 +143,59 @@ namespace algebra {
         }
         else {
             if constexpr (Store == StorageOrder::row) {
-
-                // save the needed memory space
-                inner_index.resize(nrows+1);
-                outer_index.reserve(values.size());
-                compressed_values.reserve(values.size());
-
-                inner_index[0] = 0; //by definition
-
-                // loop over the rows
-                for(std::size_t i=0;i<nrows;i++){
-
-                    // get the iterators at the begin and end of the row
-                    std::array<std::size_t,2> low{i,0}, upp{i,ncols-1};
-                    auto lower=values.lower_bound(low);
-                    auto upper=values.upper_bound(upp);
-
-                    // non-zero elements of the row
-                    std::size_t non_zeros=0;
-
-
-                    for(auto k=lower;k!=upper;k++){
-
-                        outer_index.emplace_back(k->first[1]);
-                        compressed_values.emplace_back(k->second);
-
-                        non_zeros++;
-                    }
-
-                    inner_index[i+1]=inner_index[i]+non_zeros;
-                }
-
-
-
+                storage_val_compressed(nrows,ncols);
             }
             if constexpr (Store == StorageOrder::column){
-                // save the needed memory space
-                inner_index.resize(ncols+1);
-                outer_index.reserve(values.size());
-                compressed_values.reserve(values.size());
-
-                inner_index[0] = 0; //by definition
-
-                // loop over the columns
-                for(std::size_t i=0;i<ncols;i++){
-
-                    std::array<std::size_t,2> low{0,i}, upp{nrows-1,i};
-                    auto lower=values.lower_bound(low);
-                    auto upper=values.upper_bound(upp);
-
-                    //  non-zero elements of the column
-                    std::size_t non_zero=0;
-
-                    for(auto k=lower;k!=upper;k++){
-                        // I store the row of the element and its value in the right vector
-                        outer_index.emplace_back(k->first[0]);
-                        compressed_values.emplace_back(k->second);
-                        // increase the count of nonzero elements in the line
-                        non_zero++;
-                    }
-                    // definition of next value of first_indexes according to the CSR
-                    inner_index[i+1]=inner_index[i]+non_zero;
+                storage_val_compressed(ncols,nrows);
                 }
-
-                //TODO: handle the map ordering, for now we are assuming the matrix is correctly ordered
-
             };
             // Clear the map
             values.clear();
 
             // Update compressed flag
             compressed = true;
-        };
     }//compress
+
+    /**
+     * @brief method to store the values in the compressed form
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     * @param ind1 nrows for row-wise format | ncols for column-wise format
+     * @param ind2 ncols for row-wise format | nrows for column-wise format
+     */
+    template<typename T, StorageOrder Store>
+    void Matrix<T, Store>::storage_val_compressed(size_t ind1, size_t ind2) {
+        // save the needed memory space
+        inner_index.resize(ind1+1);
+        outer_index.reserve(values.size());
+        compressed_values.reserve(values.size());
+
+        inner_index[0] = 0; //by definition
+
+        // loop over the rows
+        for(std::size_t i=0;i<ind1;i++){
+
+            // get the iterators at the begin and end of the row
+            std::array<std::size_t,2> low{i,0}, upp{i,ind2-1};
+            auto lower=values.lower_bound(low);
+            auto upper=values.upper_bound(upp);
+
+            // non-zero elements of the row
+            std::size_t non_zeros=0;
+
+
+            for(auto k=lower;k!=upper;k++){
+
+                outer_index.emplace_back(k->first[1]);
+                compressed_values.emplace_back(k->second);
+
+                non_zeros++;
+            }
+
+            inner_index[i+1]=inner_index[i]+non_zeros;
+        }
+    }// storage_val_compressed
+
 
     // definition uncompress method
     /**
@@ -215,18 +215,10 @@ namespace algebra {
         values.clear();
 
         if (Store == StorageOrder::row) {
-            for (std::size_t i = 0; i < nrows; ++i) {
-                for (std::size_t j = inner_index[i]; j < inner_index[i + 1]; ++j) {
-                    values[{i, outer_index[j]}] = compressed_values[j];
-                }
-            }
+            storage_val_map(nrows);
         }
         else {
-            for (std::size_t j = 0; j < ncols; ++j) {
-                for (std::size_t i = inner_index[j]; i < inner_index[j + 1]; ++i) {
-                    values[{outer_index[i], j}] = compressed_values[i];
-                }
-            }
+            storage_val_map(ncols);
         }
 
 
@@ -238,6 +230,23 @@ namespace algebra {
         // Update compressed flag
         compressed = false;
     }//uncompress
+
+    /**
+     * @brief method to store the values in the map for the uncompressed form
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     * @param ind - nrows for row-wise form - ncols for column-wise form
+     */
+    template<typename T, StorageOrder Store>
+    void Matrix<T, Store>::storage_val_map(size_t ind) {
+        for (std::size_t i = 0; i < ind; ++i) {
+            for (std::size_t j = inner_index[i]; j < inner_index[i + 1]; ++j) {
+                values[{i, outer_index[j]}] = compressed_values[j];
+                // key of the map is (row, col) for row-wise
+                // key of the map is (col, row) for column-wise
+            }
+        }
+    }
 
 
 
@@ -260,13 +269,26 @@ namespace algebra {
             Matrix<T,Store>::uncompress();
         }
 
-        // If the new size is smaller than the current size, remove elements outside the new size
-        auto it = values.begin();
-        while (it != values.end()) {
-            if (it->first[0] >= new_rows || it->first[1] >= new_cols) {
-                it = values.erase(it);
-            } else {
-                ++it;
+        if constexpr (Store == StorageOrder::row){
+            // If the new size is smaller than the current size, remove elements outside the new size
+            auto it = values.begin();
+            while (it != values.end()) {
+                if (it->first[0] >= new_rows || it->first[1] >= new_cols) {
+                    it = values.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+        if constexpr (Store == StorageOrder::row){
+            // If the new size is smaller than the current size, remove elements outside the new size
+            auto it = values.begin();
+            while (it != values.end()) {
+                if (it->first[0] >= new_cols || it->first[1] >= new_rows) {
+                    it = values.erase(it);
+                } else {
+                    ++it;
+                }
             }
         }
     } //Resize
@@ -299,23 +321,35 @@ namespace algebra {
     }//find_compressed
 
     /**
-     * @brief method to print the  matrix
+     * @brief method to print the matrix
      * @tparam T type of the elements in the matrix
      * @tparam Store the storage order of the matrix, it can be row or column
      */
     template<typename T, StorageOrder Store>
-    void Matrix<T,Store>::print() const {
+    void Matrix<T,Store>::print()  {
         if(compressed){
             Matrix<T,Store>::uncompress();
         }
 
-        for (auto it=values.cbegin(); it!=values.cend(); ++it)
-        {
-            std::cout << it->first[0] << " " << it->first[1] << ": " << it->second << std::endl;
+        if constexpr (Store == StorageOrder::row){
+            for (auto it=values.cbegin(); it!=values.cend(); ++it) {
+                std::cout << it->first[0] << " " << it->first[1] << ": " << it->second << std::endl;
+            }
         }
-    }
+        if constexpr (Store == StorageOrder::column) {
+            for (auto it = values.cbegin(); it != values.cend(); ++it) {
+                std::cout << it->first[1] << " " << it->first[0] << ": " << it->second << std::endl;
+            }
+        }
+    }//print
 
-    }//algebra
+
+    //template<typename T, StorageOrder Store>
+    //friend std::vector<T> operator*(const Matrix<T,Store>& mat,const std::vector<T>& vec);
+
+
+
+}//algebra
 
 
 

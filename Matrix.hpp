@@ -70,10 +70,19 @@ namespace algebra {
         void compress();
         void uncompress();
 
+        // methods used to compress and decompress
+        void storage_val_compressed(size_t, size_t);
+        void storage_val_map(size_t);
+
         //method to resize the matrix
         void resize(std::size_t new_rows, std::size_t new_cols);
 
-        void print() const ;
+        //friend operator* to compute the matrix vector multiplication
+        friend std::vector<T> operator*(const Matrix<T,Store>& mat,const std::vector<T>& vec);
+
+
+
+        void print()  ;
 
 
 
