@@ -279,8 +279,7 @@ namespace algebra {
                     ++it;
                 }
             }
-        }
-        if constexpr (Store == StorageOrder::row){
+        } else  {
             // If the new size is smaller than the current size, remove elements outside the new size
             auto it = values.begin();
             while (it != values.end()) {
@@ -291,6 +290,7 @@ namespace algebra {
                 }
             }
         }
+
     } //Resize
 
     /**
@@ -343,9 +343,6 @@ namespace algebra {
         }
     }//print
 
-
-    //template<typename T, StorageOrder Store>
-    //friend std::vector<T> operator*(const Matrix<T,Store>& mat,const std::vector<T>& vec);
 
 
 
