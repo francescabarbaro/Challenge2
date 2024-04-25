@@ -5,7 +5,7 @@ CPPFLAGS ?= -O3 -Wall
 
 SOURCES = main.cpp
 OBJECTS = $(SOURCES: .cpp=.o)
-HEADERS = Matrix.hpp Matrix_imp.hpp
+HEADERS = Matrix.hpp Matrix_imp.hpp chrono.hpp
 EXEC = main
 
 all: $(EXEC)
