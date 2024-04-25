@@ -41,7 +41,12 @@ namespace algebra {
 
         std::size_t num_rows, num_cols, non_zero_elem;
 
+        //read the number of rows, columns and non-zero elements from the file
         file >> num_rows >> num_cols >> non_zero_elem;
+
+        //update the number of rows and colums in the class
+        nrows = num_rows;
+        ncols = num_cols;
 
 
         // differentiate the ordering in the map for the case by row and by column
@@ -72,7 +77,6 @@ namespace algebra {
             }
 
         }
-        return;
     }
 
     // definition operator () non const version
@@ -90,14 +94,24 @@ namespace algebra {
         if (i >= nrows || j >= ncols)
             std::cerr << "Indexes out of bounds" << std::endl;
 
+
+
         if (!compressed) {
-            auto key = std::array<std::size_t, 2>{i, j};
-            return values[key]; //insert the element if it doesn't exists
+            std::array<std::size_t, 2> key{0,0};
+            if constexpr (Store == StorageOrder::row)
+                key = {i, j};
+            if constexpr (Store == StorageOrder::column)
+                key = {j,i};
+
+            return values[key];
+
         } else {
             return find_compressed(i,j);
         }
 
     } //non const verison operator ()
+
+
 
     //definition operato ()  const version
     /**
@@ -116,18 +130,52 @@ namespace algebra {
             }
 
         if (!compressed) {
-            auto key = std::array<std::size_t, 2>{i, j};
+            std::array<std::size_t, 2> key{0,0};
+            if constexpr (Store == StorageOrder::row)
+                key = {i, j};
+            if constexpr (Store == StorageOrder::column)
+                key = {j,i};
+
             auto it = values.find(key);
             if (it != values.end()) {
-                return it->second; // Return the existing value
+                    return it->second; // Return the existing value
             } else {
-                std::cout << "Element at position (" << i << ", " << j << ") does not exist." << std::endl;
+                //std::cout << "Element at position (" << i << ", " << j << ") does not exist." << std::endl;
                 return 0;
             }
         } else {
             return find_compressed(i,j);
         }
     }//const version operator ()
+
+    /**
+     * @brief method to find, if exist, the element given the indexes of a compressed matrix
+     * @tparam T type of the elements in the matrix
+     * @tparam Store the storage order of the matrix, it can be row or column
+     * @param row index for the row
+     * @param col index for the columns
+     * @return corresponding value at the input indexes
+     */
+    template<typename T, StorageOrder Store>
+    T Matrix<T, Store>::find_compressed(std::size_t row, std::size_t col) const{
+        if constexpr (Store == StorageOrder::row) { // Compressed Sparse Row
+            for (std::size_t i = inner_index[row]; i < inner_index[row + 1]; ++i) {
+                if (outer_index[i] == col) {
+                    return compressed_values[i];
+                }
+            }
+        } else if constexpr (Store == StorageOrder::row){ // Compressed Sparse Column
+            for (std::size_t i = inner_index[col]; i < inner_index[col + 1]; ++i) {
+                if (outer_index[i] == row) {
+                    return compressed_values[i];
+                }
+            }
+        }
+        std::cerr << "Error: Matrix is in compressed form and element at position (" << row << ", " << col
+                  << ") does not exist." << std::endl;
+        throw std::runtime_error("Non existing element");
+
+    }//find_compressed
 
     // definition compress method
     /**
@@ -175,7 +223,7 @@ namespace algebra {
         // loop over the rows
         for(std::size_t i=0;i<ind1;i++){
 
-            // get the iterators at the begin and end of the row
+            // get the iterators at the beginning and end of the row(or column)
             std::array<std::size_t,2> low{i,0}, upp{i,ind2-1};
             auto lower=values.lower_bound(low);
             auto upper=values.upper_bound(upp);
@@ -293,32 +341,7 @@ namespace algebra {
 
     } //Resize
 
-    /**
-     * @brief method to find, if exist, the element given the indexes of a compressed matrix
-     * @tparam T type of the elements in the matrix
-     * @tparam Store the storage order of the matrix, it can be row or column
-     * @param row index for the row
-     * @param col index for the columns
-     * @return corresponding value at the input indexes
-     */
-    template<typename T, StorageOrder Store>
-    T Matrix<T, Store>::find_compressed(std::size_t row, std::size_t col) {
-        if constexpr (Store == StorageOrder::row) { // Compressed Sparse Row
-            for (std::size_t i = inner_index[row]; i < inner_index[row + 1]; ++i) {
-                if (outer_index[i] == col) {
-                    return compressed_values[i];
-                }
-            }
-        } else { // Compressed Sparse Column
-            for (std::size_t i = inner_index[col]; i < inner_index[col + 1]; ++i) {
-                if (outer_index[i] == row) {
-                    return compressed_values[i];
-                }
-            }
-        }
-        std::cerr << "Error: Matrix is in compressed form and element at position (" << row << ", " << col
-                  << ") does not exist." << std::endl;
-    }//find_compressed
+
 
     /**
      * @brief method to print the matrix

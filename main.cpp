@@ -11,7 +11,7 @@ using namespace algebra;
 
 int main(){
 
-    Matrix<double, StorageOrder::column> matrix;
+    Matrix<double, StorageOrder::row> matrix;
 
     //try to read the matrix -> ok
     std::string filename="lnsp_131.mtx";
@@ -24,28 +24,32 @@ int main(){
     matrix.resize(5,5);
     matrix.print();
 
-    /*//now try to compress and decompress the matrix -> ok
+    //now try to compress and decompress the matrix -> ok
     std::cout<<"compressed and uncompressed matrix"<<std::endl;
     matrix.compress();
-    matrix.print();*/
+    matrix.print();
 
-    // check matrix*vector
-    std::vector<double> vec={1.0,1.0,1.0,1.0,1.0};
+
+    //check matrix vector compressed -> row ok -> col ok
+
+    matrix.compress();
+    std::cout<<"is compress: "<<matrix.is_compressed()<<std::endl;
+    std::vector<double> vec={-1.0,-1.0,-1.0,-1.0,-1.0};
+    std::vector<double> result1=matrix*vec;
+    std::cout<<"product compressed mat*vec"<<std::endl;
+    for (auto it = result1.cbegin(); it != result1.cend(); ++it) {
+        std::cout << *it << std::endl;
+    }
+
+    // check matrix*vector uncompressed -> row ok -> col ok
+    matrix.uncompress();
+    std::cout<<"is compress: "<<matrix.is_compressed()<<std::endl;
     std::vector<double> result=matrix*vec;
     std::cout<<"product uncompressed mat*vec"<<std::endl;
     for (auto it = result.cbegin(); it != result.cend(); ++it) {
         std::cout << *it << std::endl;
     }
 
-    matrix.compress();
-    std::vector<double> result1=matrix*vec;
-    std::cout<<"product compressed mat*vec"<<std::endl;
-    for (auto it = result.cbegin(); it != result.cend(); ++it) {
-        std::cout << *it << std::endl;
-    }
-
-
-
 
     return 0;
-};
+}

@@ -59,7 +59,7 @@ namespace algebra {
         bool is_compressed() { return compressed; } ;
 
         // search an element in compress matrix
-        T find_compressed(std::size_t , std::size_t );
+        T find_compressed(std::size_t , std::size_t ) const;
 
         // Operator to access elements (non-const version)
         T &operator()(std::size_t i, std::size_t j) ;
@@ -77,87 +77,91 @@ namespace algebra {
         //method to resize the matrix
         void resize(std::size_t, std::size_t);
 
+
         //friend operator* to compute the matrix vector multiplication
         friend std::vector<T> operator*(const Matrix<T,Store>& mat,const std::vector<T>& vec){
 
             // check if the dimension of the vector is compatible with the matrix dimensions
-            if(vec.size()!=mat.ncols)
+            if(vec.size()!=mat.ncols){
                 std::cerr<<"Error: matrix-vector dimensions are not compatible"<<std::endl;
+                throw std::runtime_error("Incorrect dimensions");
+            }
 
             // vector containing the result of the product
             std::vector<T> result(mat.nrows);
 
-            // differentiation between the StorageOrder
-            if constexpr(Store==StorageOrder::row){
-                // differentiation between compressed or not matrix, to know where to look for the data
-                if(mat.compressed){
+            if(mat.compressed){ //matrix compressed
+                if constexpr (Store==StorageOrder::row){ //ordered by row
                     // loop over the rows
                     for (std::size_t i = 0; i < mat.nrows; i++)
                     {
-                        // value for the i-th element of the result vector
-                        T element=0;
-                        // loop over non-zero values of row i, for the row-vector vector multiplication
+                        T sum=0;
+
+                        // loop over non-zero values of the rows
                         for (std::size_t j = mat.inner_index[i]; j < mat.inner_index[i+1]; j++)
                         {
-                            // for every non-zero value, I sum the right increment
-                            element+=mat.compressed_values[j]*vec[mat.outer_index[j]];
+                            // operation
+                            sum+=mat.compressed_values[j]*vec[mat.outer_index[j]];
                         }
-                        // assignment of value
-                        result[i]=element;
+                        // put the sum in the right place of the result
+                        result[i]=sum;
+                    }
+
+                }
+                else if constexpr (Store == StorageOrder::column){ // compressed and ordered by column
+                    // loop over the rows
+                    for(std::size_t i=0;i<mat.ncols;i++){
+
+                        // loop over non-zero values of the columns
+                        for (std::size_t j = mat.inner_index[i]; j < mat.inner_index[i+1]; j++)
+                        {
+                            // operation, updating the result at each cycle
+                            result[mat.outer_index[j]] += mat.compressed_values[j]*vec[i];
+                        }
                     }
                 }
-                else{
+
+            } else if (!mat.compressed){ //matrix not compressed
+                if constexpr (Store == StorageOrder::row){ //ordered by row
                     // loop over rows
                     for (std::size_t i = 0; i < mat.nrows; i++)
                     {
-                        // value for the i-th element of the result vector
-                        T element=0;
-                        // defintion of lower and upper, iterators for firt element of the row and first iterator after the last element of the row
-                        std::array<std::size_t,2> pos={i,0};
-                        auto lower=mat.values.lower_bound(pos);
-                        pos={i,mat.ncols-1};
-                        auto upper=mat.values.upper_bound(pos);
-                        // loop over non-zero values of i-th row, with iterators, for the row vector multiplication
+                        T sum=0;
+
+                        // get the iterators at the beginning and end of the row
+                        std::array<std::size_t,2> low{i,0}, upp{i,mat.ncols-1};
+                        auto lower=mat.values.lower_bound(low);
+                        auto upper=mat.values.upper_bound(upp);
+
+                        // loop over non-zero values of rows
                         for (auto j = lower; j != upper; j++)
                         {
-                            // for every non-zero-value, I sum the increment
-                            element+=j->second*vec[j->first[1]];
+                            // operation
+                            sum+=j->second*vec[j->first[1]];
                         }
-                        // assignment of the value
-                        result[i]=element;
+                        // put the sum in the right place of the result
+                        result[i]=sum;
                     }
                 }
-            }
-            else{
-                if(!mat.compressed){
+                else if constexpr (Store == StorageOrder::column){ //uncompressed and ordered by column
                     // loop over columns
                     for(std::size_t i=0;i<mat.ncols;i++){
-                        // defintion of lower and upper, iterators for first element of the column and first iterator after the last element of the column
-                        std::array<std::size_t,2> pos={i,0};
-                        auto lower=mat.values.lower_bound(pos);
-                        pos={i,mat.nrows-1};
-                        auto upper=mat.values.upper_bound(pos);
-                        // loop over non-zero elements of the i-th column
-                        // I sum the i-th column vector times the i-th element of the vector element-wise, but still following the given formula
+
+                        // get the iterators at the beginning and end of the column
+                        std::array<std::size_t,2> low{i,0}, upp{i,mat.nrows-1};
+                        auto lower=mat.values.lower_bound(low);
+                        auto upper=mat.values.upper_bound(upp);
+
+                        // loop over non-zero values of columns
                         for(auto iter=lower;iter!=upper;iter++){
-                            // summing each increment of the i-th column vector
-                            result[iter->first[0]]+=vec[iter->first[1]]*iter->second;
+                            // operation, updating the result at each cycle
+                            result[iter->first[1]]+=vec[iter->first[0]]*iter->second;
                         }
                     }
                 }
-                else{
-                    // loop over columns
-                    for(std::size_t i=0;i<mat.ncols;i++){
-                        // loop over non-zero elements of column i
-                        // I sum the i-th column vector times the i-th element of the vector element-wise, but still following the given formula
-                        for (std::size_t j = mat.inner_index[i]; j < mat.inner_index[i+1]; j++)
-                        {
-                            // summing each increment of the i-th column vector
-                            result[mat.outer_index[j]]+=mat.compressed_values[j]*vec[i];
-                        }
-                    }
-                }
+
             }
+
             // return the result vector
             return result;
         };// friend operator* matrix-vector
