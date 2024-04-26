@@ -89,24 +89,43 @@ namespace algebra {
      * @return the value of the matrix at the indexes in input
      */
     template<typename T, StorageOrder Store>
-    T  & Matrix<T, Store>:: operator()(std::size_t i, std::size_t j) {
+    T  & Matrix<T, Store>:: operator()(std::size_t row, std::size_t col) {
         // Check if the indexes are present in the matrix
-        if (i >= nrows || j >= ncols)
+        if (row >= nrows || col >= ncols){
             std::cerr << "Indexes out of bounds" << std::endl;
+            throw std::runtime_error("Indexes out of bounds");
+        }
+
+
 
 
 
         if (!compressed) {
             std::array<std::size_t, 2> key{0,0};
             if constexpr (Store == StorageOrder::row)
-                key = {i, j};
+                key = {row, col};
             if constexpr (Store == StorageOrder::column)
-                key = {j,i};
+                key = {col,row};
 
             return values[key];
 
         } else {
-            return find_compressed(i,j);
+            if constexpr (Store == StorageOrder::row) { // Compressed Sparse Row
+                for (std::size_t i = inner_index[row]; i < inner_index[row + 1]; ++i) {
+                    if (outer_index[i] == col) {
+                        return compressed_values[i];
+                    }
+                }
+            } else if constexpr (Store == StorageOrder::row){ // Compressed Sparse Column
+                for (std::size_t i = inner_index[col]; i < inner_index[col + 1]; ++i) {
+                    if (outer_index[i] == row) {
+                        return compressed_values[i];
+                    }
+                }
+            }
+            std::cerr << "Error: Matrix is in compressed form and element at position (" << row << ", " << col
+                      << ") does not exist." << std::endl;
+            throw std::runtime_error("Non existing element");
         }
 
     } //non const verison operator ()
@@ -123,59 +142,47 @@ namespace algebra {
      * @return the value of the matrix at the indexes in input, if already exists, 0 otherwise
      */
     template<typename T, StorageOrder Store>
-    const T  & Matrix<T, Store>:: operator()(std::size_t i, std::size_t j) const {
+    const T  & Matrix<T, Store>:: operator()(std::size_t row, std::size_t col) const {
         // Check if the indexes are present in the matrix
-        if (i >= nrows || j >= ncols){
+        if (row >= nrows || col >= ncols){
             std::cerr << "Indexes out of bounds" << std::endl;
+            throw std::runtime_error("Indexes out of bounds");
             }
 
         if (!compressed) {
             std::array<std::size_t, 2> key{0,0};
             if constexpr (Store == StorageOrder::row)
-                key = {i, j};
+                key = {row, col};
             if constexpr (Store == StorageOrder::column)
-                key = {j,i};
+                key = {col,row};
 
             auto it = values.find(key);
             if (it != values.end()) {
                     return it->second; // Return the existing value
             } else {
-                //std::cout << "Element at position (" << i << ", " << j << ") does not exist." << std::endl;
+                std::cout << "Element at position (" << row << ", " << col << ") does not exist." << std::endl;
                 return 0;
             }
         } else {
-            return find_compressed(i,j);
+            if constexpr (Store == StorageOrder::row) { // Compressed Sparse Row
+                for (std::size_t i = inner_index[row]; i < inner_index[row + 1]; ++i) {
+                    if (outer_index[i] == col) {
+                        return compressed_values[i];
+                    }
+                }
+            } else if constexpr (Store == StorageOrder::row){ // Compressed Sparse Column
+                for (std::size_t i = inner_index[col]; i < inner_index[col + 1]; ++i) {
+                    if (outer_index[i] == row) {
+                        return compressed_values[i];
+                    }
+                }
+            }
+            std::cerr << "Error: Matrix is in compressed form and element at position (" << row << ", " << col
+                      << ") does not exist." << std::endl;
+            throw std::runtime_error("Non existing element");
         }
     }//const version operator ()
 
-    /**
-     * @brief method to find, if exist, the element given the indexes of a compressed matrix
-     * @tparam T type of the elements in the matrix
-     * @tparam Store the storage order of the matrix, it can be row or column
-     * @param row index for the row
-     * @param col index for the columns
-     * @return corresponding value at the input indexes
-     */
-    template<typename T, StorageOrder Store>
-    T Matrix<T, Store>::find_compressed(std::size_t row, std::size_t col) const{
-        if constexpr (Store == StorageOrder::row) { // Compressed Sparse Row
-            for (std::size_t i = inner_index[row]; i < inner_index[row + 1]; ++i) {
-                if (outer_index[i] == col) {
-                    return compressed_values[i];
-                }
-            }
-        } else if constexpr (Store == StorageOrder::row){ // Compressed Sparse Column
-            for (std::size_t i = inner_index[col]; i < inner_index[col + 1]; ++i) {
-                if (outer_index[i] == row) {
-                    return compressed_values[i];
-                }
-            }
-        }
-        std::cerr << "Error: Matrix is in compressed form and element at position (" << row << ", " << col
-                  << ") does not exist." << std::endl;
-        throw std::runtime_error("Non existing element");
-
-    }//find_compressed
 
     // definition compress method
     /**

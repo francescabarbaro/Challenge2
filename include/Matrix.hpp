@@ -11,6 +11,7 @@
 #include <vector>
 #include <array>
 #include <fstream>
+#include <complex>
 
 
 namespace algebra {
@@ -58,13 +59,12 @@ namespace algebra {
          */
         bool is_compressed() { return compressed; } ;
 
-        // search an element in compress matrix
-        T find_compressed(std::size_t , std::size_t ) const;
 
         // Operator to access elements (non-const version)
         T &operator()(std::size_t i, std::size_t j) ;
         // Operator to access elements (const version)
         const T &operator()(std::size_t, std::size_t) const ;
+
 
         // Method to compress the matrix
         void compress();

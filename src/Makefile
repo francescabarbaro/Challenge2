@@ -1,11 +1,11 @@
 CXX      ?= g++
 CXXFLAGS ?= -std=c++20
-CPPFLAGS ?= -O3 -Wall 
+CPPFLAGS ?= -O3 -Wall -I"../include"
 
 
 SOURCES = main.cpp
 OBJECTS = $(SOURCES: .cpp=.o)
-HEADERS = Matrix.hpp Matrix_imp.hpp chrono.hpp
+HEADERS = Matrix.hpp Matrix_imp.hpp chrono.hpp random_vec.hpp
 EXEC = main
 
 all: $(EXEC)
