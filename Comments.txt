@@ -1,0 +1,24 @@
+README.md is good.
+Nicely you have reported also the results. Nice!
+
+
+Checklist:
+  - sparse_matrix constructor:   OKAY
+  - comparison operator:         OKAY
+  - compress:                    OKAY
+  - uncompress:                  OKAY
+  - data is properly cleared:    OKAY
+  - call to non-const / const assignment operator: Const operator fails when called.
+  - resize method:               OKAY
+  - operator*:                   OKAY
+  - reading from file:           OKAY
+
+EXTRAs: 
+  No extras
+
+General Comments:
+  - Review your comments. You forgot a TODO in the main file. Not supernice to see.
+  - Instead of having a code with all the commented codes for the tests, I would have multiple files.
+  - It is not nice to have the dimension of the read matrix hard coded.
+  - operator() const needs to handle also the case when the element is not in the matrix and return zero.
+  - Instead of the print() method, overload the operator<<.
